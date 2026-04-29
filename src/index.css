@@ -1,0 +1,692 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Base Styles */
+@layer base {
+  html {
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  }
+
+  body {
+    @apply antialiased;
+  }
+
+  h1 {
+    @apply text-3xl sm:text-4xl md:text-5xl font-bold;
+  }
+
+  h2 {
+    @apply text-2xl sm:text-3xl md:text-4xl font-semibold;
+  }
+
+  h3 {
+    @apply text-xl sm:text-2xl md:text-3xl font-semibold;
+  }
+
+  h4 {
+    @apply text-lg sm:text-xl md:text-2xl font-medium;
+  }
+
+  h5 {
+    @apply text-base sm:text-lg md:text-xl font-medium;
+  }
+
+  h6 {
+    @apply text-sm sm:text-base md:text-lg font-medium;
+  }
+
+  p {
+    @apply text-base;
+  }
+}
+
+/* Custom Components */
+@layer components {
+  .shadow-light {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-medium {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Custom Utilities */
+@layer utilities {
+  .w-30 {
+    width: 7.5rem;
+    /* 120px */
+  }
+
+  .h-30 {
+    height: 7.5rem;
+    /* 120px */
+  }
+}
+
+/* Custom Animations */
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes textBlink {
+
+  0%,
+  100% {
+    color: #111827;
+    /* gray-900 */
+  }
+
+  50% {
+    color: #6d6d6d;
+    /* gray-400 */
+  }
+}
+
+.animate-blink {
+  animation: blink 1s ease-in-out infinite;
+}
+
+.animate-text-blink {
+  animation: textBlink 1.5s ease-in-out infinite;
+}
+
+.animate-text-blink:hover {
+  animation: none
+}
+
+.countdown-alarm {
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.4s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.4s ease-out;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ff13134b;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff131375;
+}
+
+/* React DatePicker - Refined JomFood Style */
+.react-datepicker {
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  background: #fff;
+  display: inline-flex;
+  width: 94%;
+  max-width: 100%;
+}
+
+.react-datepicker__month-container,
+.react-datepicker__time-container {
+  float: none;
+}
+
+.react-datepicker__month-container {
+  flex: 1;
+}
+
+.react-datepicker__header {
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 16px 10px;
+}
+
+.react-datepicker__current-month {
+  color: #0f172a;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.react-datepicker__day-names {
+  margin-top: 6px;
+}
+
+.react-datepicker__day-name {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.react-datepicker__day,
+.react-datepicker__time-name {
+  color: #334155;
+}
+
+.react-datepicker__day {
+  width: 2.2rem;
+  line-height: 2.2rem;
+  margin: 0.15rem;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.react-datepicker__day--today {
+  box-shadow: inset 0 0 0 1px #fed7aa;
+  color: #c2410c;
+}
+
+.react-datepicker__day:hover {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: #f97316;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(249, 115, 22, 0.35);
+}
+
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--keyboard-selected:hover {
+  background: #ea580c;
+}
+
+.react-datepicker__day--disabled,
+.react-datepicker__day--outside-month {
+  color: #cbd5f5;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.react-datepicker__day--disabled:hover,
+.react-datepicker__day--outside-month:hover {
+  background: #f8fafc;
+  color: #cbd5f5;
+}
+
+.react-datepicker__time-container {
+  border-left: 1px solid #f1f5f9;
+  width: 130px;
+}
+
+.react-datepicker__time-container .react-datepicker__time {
+  background: #fff;
+}
+
+.react-datepicker__time-container .react-datepicker__header {
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.react-datepicker__time-list {
+  padding: 8px 6px;
+}
+
+.react-datepicker__time-list-item {
+  color: #334155;
+  border-radius: 999px;
+  margin: 4px 6px;
+  padding: 6px 8px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.react-datepicker__time-list-item:hover {
+  background: #fff7ed;
+  color: #9a3412;
+  transform: translateX(1px);
+}
+
+.react-datepicker__time-list-item--selected {
+  background: #f97316;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(249, 115, 22, 0.35);
+}
+
+.react-datepicker__navigation {
+  top: 14px;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: #f97316;
+}
+
+.react-datepicker__triangle {
+  display: none;
+}
+
+.react-datepicker__input-container {
+  width: 100%;
+}
+
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker-popper {
+  z-index: 9999;
+}
+
+.cart-datetime-popover.react-datepicker-popper {
+  min-width: 0;
+  max-width: calc(100vw - 24px);
+}
+
+/* Cart Drawer - Compact DatePicker */
+.cart-datetime-popover .react-datepicker {
+  font-size: 0.76rem;
+  width: min(360px, calc(100vw - 24px));
+}
+
+.cart-datetime-popover .react-datepicker__header {
+  padding: 8px 10px 6px;
+}
+
+.cart-datetime-popover .react-datepicker__current-month {
+  font-size: 0.8rem;
+}
+
+.cart-datetime-popover .react-datepicker__day-names {
+  margin-top: 4px;
+}
+
+.cart-datetime-popover .react-datepicker__day-name {
+  font-size: 0.55rem;
+}
+
+.cart-datetime-popover .react-datepicker__day {
+  width: 1.5rem;
+  line-height: 1.5rem;
+  margin: 0.06rem;
+}
+
+.cart-datetime-popover .react-datepicker__time-container {
+  width: 100px;
+}
+
+.cart-datetime-popover .react-datepicker__time {
+  height: 100%;
+}
+
+.cart-datetime-popover .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+  height: 100%;
+}
+
+.cart-datetime-popover .react-datepicker__time-list {
+  padding: 4px 3px;
+  max-height: 160px !important;
+}
+
+.cart-datetime-popover .react-datepicker__month-container {
+  height: auto;
+}
+
+.cart-datetime-popover .react-datepicker__time-list-item {
+  margin: 2px 3px;
+  padding: 3px 5px;
+}
+
+.react-datepicker.cart-datetime-inline {
+  font-size: 0.76rem;
+  width: min(360px, calc(100vw - 24px));
+}
+
+.react-datepicker.cart-datetime-inline .react-datepicker__header {
+  padding: 8px 10px 6px;
+}
+
+.react-datepicker.cart-datetime-inline .react-datepicker__current-month {
+  font-size: 0.8rem;
+}
+
+.react-datepicker.cart-datetime-inline .react-datepicker__day-name {
+  font-size: 0.55rem;
+}
+
+.react-datepicker.cart-datetime-inline .react-datepicker__day {
+  width: 1.5rem;
+  line-height: 1.5rem;
+  margin: 0.06rem;
+}
+
+.react-datepicker.cart-datetime-inline .react-datepicker__time-container {
+  width: 100px;
+}
+
+.react-datepicker.cart-datetime-inline .react-datepicker__time-list {
+  padding: 4px 3px;
+  max-height: 160px !important;
+}
+
+@media (max-width: 417px) {
+  .react-datepicker.cart-datetime-inline.cart-datetime-inline-modal {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .react-datepicker.cart-datetime-inline.cart-datetime-inline-modal .react-datepicker__day {
+    width: 1.4rem;
+    line-height: 1.4rem;
+    margin: 0.05rem;
+  }
+
+  .react-datepicker.cart-datetime-inline.cart-datetime-inline-modal .react-datepicker__time-container {
+    width: 92px;
+    border-left: 1px solid #f1f5f9;
+  }
+
+  .react-datepicker.cart-datetime-inline.cart-datetime-inline-modal .react-datepicker__header {
+    padding: 8px 8px 6px;
+  }
+
+  .react-datepicker.cart-datetime-inline.cart-datetime-inline-modal .react-datepicker__time-list {
+    max-height: 175px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .react-datepicker__portal {
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 9999;
+    padding: 12px;
+  }
+
+  .react-datepicker__portal .react-datepicker {
+    width: calc(100vw - 24px);
+    max-width: 360px;
+    border-radius: 16px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .react-datepicker__portal .react-datepicker__month-container,
+  .react-datepicker__portal .react-datepicker__time-container {
+    width: 100%;
+    border-left: 0;
+    float: none;
+  }
+
+  .react-datepicker__portal .react-datepicker__time-container {
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .react-datepicker__portal .react-datepicker__time-container .react-datepicker__time,
+  .react-datepicker__portal .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+    width: 100%;
+  }
+
+  .react-datepicker__portal .react-datepicker__time-list {
+    max-height: 165px !important;
+    padding: 8px;
+  }
+
+  .react-datepicker__portal .react-datepicker__time-list-item {
+    margin: 3px 0;
+    border-radius: 10px;
+  }
+}
+
+/* Category Deals Swiper Styles - Equal Height Cards */
+.category-deals-swiper .swiper-wrapper {
+  align-items: stretch !important;
+}
+
+.category-deals-swiper .swiper-slide {
+  height: 100% !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.category-deals-swiper .swiper-slide>div {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.category-deals-swiper .swiper-slide>div>div {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Category Swipers - Equal Height Cards (Browse by Cuisine & Browse by Category) */
+.categories-swiper .swiper-wrapper,
+.deal-categories-swiper .swiper-wrapper {
+  align-items: stretch !important;
+}
+
+.categories-swiper .swiper-slide,
+.deal-categories-swiper .swiper-slide {
+  height: auto !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.categories-swiper .swiper-slide>button,
+.deal-categories-swiper .swiper-slide>button {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Deal Images Swiper Styles */
+.deal-images-swiper {
+  position: relative;
+}
+
+.deal-images-swiper .swiper-pagination {
+  bottom: 10px !important;
+}
+
+.deal-images-swiper .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.8) !important;
+  opacity: 1 !important;
+}
+
+.deal-images-swiper .swiper-pagination-bullet-active {
+  background: white !important;
+}
+
+/* Google Translate Widget Styles - Completely hide all UI elements */
+#google_translate_element {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 200px !important;
+  height: 40px !important;
+  visibility: visible !important;
+  /* Keep visible for initialization */
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide Google Translate banner completely - using opacity instead of display: none */
+.goog-te-banner-frame,
+.skiptranslate,
+.goog-te-banner-frame.skiptranslate {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* Hide Google Translate loading icon/spinner */
+.goog-te-spinner,
+.goog-te-spinner-pos,
+.goog-te-banner-loading,
+[class*="goog-te-spinner"],
+[class*="loading"],
+iframe[src*="translate.google.com"][src*="loading"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  display: none !important;
+}
+
+/* Remove top padding that Google Translate adds to body */
+body {
+  top: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+html {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Hide Google Translate footer - using opacity instead of display: none */
+.goog-te-footer {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* Hide Google Translate gadget - using opacity instead of display: none */
+.goog-te-gadget {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* Hide any Google Translate UI elements - using opacity instead of display: none */
+.goog-te-menu-frame,
+.goog-te-menu-value,
+.goog-te-menu2 {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+}
+
+/* Ensure Google Translate select is accessible but hidden */
+.goog-te-combo {
+  position: absolute !important;
+  left: -9999px !important;
+  opacity: 0 !important;
+  pointer-events: auto !important;
+}
+
+.categories-swiper {
+  padding: 0px 5px 16px 5px !important;
+}
+
+.deal-categories-swiper {
+  padding: 0px 16px 8px 5px !important;
+}
