@@ -3,7 +3,7 @@ name: Frontend CI/CD - Main Live Deployment
 on:
   push:
     branches:
-      - main-live
+      - main
   workflow_dispatch:
 
 jobs:
