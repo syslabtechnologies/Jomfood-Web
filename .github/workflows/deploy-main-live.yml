@@ -84,35 +84,35 @@ jobs:
 
       - name: 🔍 Validate required secrets
         run: |
-          if [ -z "${{ secrets.LIVE_SERVER_HOST }}" ]; then
-            echo "❌ Error: LIVE_SERVER_HOST secret is not configured"
-            echo "Please add LIVE_SERVER_HOST secret in GitHub repository settings"
+          if [ -z "${{ secrets.SERVER_HOST }}" ]; then
+            echo "❌ Error: SERVER_HOST secret is not configured"
+            echo "Please add SERVER_HOST secret in GitHub repository settings"
             exit 1
           fi
-          if [ -z "${{ secrets.LIVE_SERVER_USERNAME }}" ]; then
-            echo "❌ Error: LIVE_SERVER_USERNAME secret is not configured"
-            echo "Please add LIVE_SERVER_USERNAME secret in GitHub repository settings"
+          if [ -z "${{ secrets.SERVER_USERNAME }}" ]; then
+            echo "❌ Error: SERVER_USERNAME secret is not configured"
+            echo "Please add SERVER_USERNAME secret in GitHub repository settings"
             exit 1
           fi
-          if [ -z "${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}" ]; then
-            echo "❌ Error: LIVE_SERVER_SSH_PRIVATE_KEY secret is not configured"
-            echo "Please add LIVE_SERVER_SSH_PRIVATE_KEY secret in GitHub repository settings"
+          if [ -z "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ Error: SERVER_SSH_PRIVATE_KEY secret is not configured"
+            echo "Please add SERVER_SSH_PRIVATE_KEY secret in GitHub repository settings"
             exit 1
           fi
           echo "✅ All required secrets are configured"
-          echo "🌐 Server Host: ${{ secrets.LIVE_SERVER_HOST }}"
-          echo "👤 Username: ${{ secrets.LIVE_SERVER_USERNAME }}"
-          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          echo "🌐 Server Host: ${{ secrets.SERVER_HOST }}"
+          echo "👤 Username: ${{ secrets.SERVER_USERNAME }}"
+          SSH_PORT="${{ secrets.SERVER_SSH_PORT || 8288 }}"
           echo "🔌 SSH Port: $SSH_PORT"
           echo "SSH_PORT=$SSH_PORT" >> $GITHUB_ENV
 
       - name: 🔌 Test SSH Connection
         run: |
-          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
-          echo "🔍 Testing SSH connection to ${{ secrets.LIVE_SERVER_HOST }}:$SSH_PORT..."
+          SSH_PORT="${{ secrets.SERVER_SSH_PORT || 8288 }}"
+          echo "🔍 Testing SSH connection to ${{ secrets.SERVER_HOST }}:$SSH_PORT..."
           
           TEMP_KEY="$(mktemp)"
-          echo "${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}" > "$TEMP_KEY"
+          echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > "$TEMP_KEY"
           chmod 600 "$TEMP_KEY"
           
           timeout 30 ssh -i "$TEMP_KEY" \
@@ -120,10 +120,10 @@ jobs:
             -o StrictHostKeyChecking=no \
             -o ConnectTimeout=10 \
             -o BatchMode=yes \
-            ${{ secrets.LIVE_SERVER_USERNAME }}@${{ secrets.LIVE_SERVER_HOST }} \
+            ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} \
             "echo 'SSH connection successful!'" || {
               echo "❌ SSH connection failed!"
-              echo "Please check LIVE_SERVER_HOST, LIVE_SERVER_SSH_PORT and SSH key"
+              echo "Please check SERVER_HOST, SERVER_SSH_PORT and SSH key"
               rm -f "$TEMP_KEY"
               exit 1
             }
@@ -134,18 +134,18 @@ jobs:
       - name: 🔑 Setup SSH key for LFTP
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
-          ssh-keyscan -p $SSH_PORT ${{ secrets.LIVE_SERVER_HOST }} >> ~/.ssh/known_hosts
+          SSH_PORT="${{ secrets.SERVER_SSH_PORT || 8288 }}"
+          ssh-keyscan -p $SSH_PORT ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: 🏢 Setup Main Live directory permissions
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.LIVE_SERVER_HOST }}
-          username: ${{ secrets.LIVE_SERVER_USERNAME }}
-          key: ${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 8288 }}
           timeout: 360s
           command_timeout: 300s
           script: |
@@ -167,20 +167,20 @@ jobs:
       - name: 🚀 Deploy to Main Live Server
         run: |
           # Fast sync for built assets only (dist/) while preserving remote .htaccess
-          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          SSH_PORT="${{ secrets.SERVER_SSH_PORT || 8288 }}"
           rsync -az --delete --info=progress2 \
             --exclude='.htaccess' \
             --filter='P .htaccess' \
             -e "ssh -i ~/.ssh/id_rsa -p $SSH_PORT -o StrictHostKeyChecking=no" \
-            dist/ ${{ secrets.LIVE_SERVER_USERNAME }}@${{ secrets.LIVE_SERVER_HOST }}:/home/jomfood/public_html/
+            dist/ ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/home/jomfood/public_html/
 
       - name: 📋 Verify deploy structure (index.html + assets/ at root)
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.LIVE_SERVER_HOST }}
-          username: ${{ secrets.LIVE_SERVER_USERNAME }}
-          key: ${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 8288 }}
           script: |
             echo "Contents of /home/jomfood/public_html/ (document root must be this path):"
             ls -la /home/jomfood/public_html/ || true
@@ -193,7 +193,7 @@ jobs:
         continue-on-error: true
         run: |
           BASE_REMOTE="/home/jomfood/public_html"
-          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          SSH_PORT="${{ secrets.SERVER_SSH_PORT || 8288 }}"
           while IFS= read -r file; do
             if [ -n "$file" ]; then
               TRASH_PATH="__trash/$file"
@@ -206,17 +206,17 @@ jobs:
                 echo "mkdir -p \"$(dirname \"$TRASH_PATH\")\""
                 echo "mv \"$REMOTE_FILE\" \"$TRASH_PATH\" || echo \"⚠️ Could not move $REMOTE_FILE\""
                 echo "bye"
-              } | lftp -u ${{ secrets.LIVE_SERVER_USERNAME }}, -p $SSH_PORT sftp://${{ secrets.LIVE_SERVER_HOST }}
+              } | lftp -u ${{ secrets.SERVER_USERNAME }}, -p $SSH_PORT sftp://${{ secrets.SERVER_HOST }}
             fi
           done < deleted.txt
 
       - name: 🔑 Re-setup Main Live directory permissions
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.LIVE_SERVER_HOST }}
-          username: ${{ secrets.LIVE_SERVER_USERNAME }}
-          key: ${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 8288 }}
           timeout: 360s
           command_timeout: 300s
           script: |
