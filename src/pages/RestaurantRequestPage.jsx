@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { businessRequestAPI, categoriesAPI, banksAPI } from '../utils/api';
 import { toast } from '../utils/toast';
 import CommonLayout from '../components/layout/CommonLayout';
-import jomfoodLogo from '../assets/JomFood.png';
+// import jomfoodLogo from '../assets/JomFood.png';
 import ScrollableSelect from '../components/ui/ScrollableSelect';
 import { LoadScript, Autocomplete } from '@react-google-maps/api';
 
