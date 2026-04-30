@@ -8,7 +8,7 @@ import { useUser } from '../context/UserContext';
 import { authStorage } from '../utils/auth';
 import { toast } from '../utils/toast';
 import CommonLayout from '../components/layout/CommonLayout';
-import jomfoodLogo from '../assets/JomFood.png';
+// import jomfoodLogo from '../assets/JomFood.png';
 
 const VerifyEmailPage = () => {
     const navigate = useNavigate();

@@ -6,7 +6,7 @@ import { api } from '../utils/api';
 import { googleOAuthAPI, appleOAuthAPI } from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { authStorage } from '../utils/auth';
-import jomfoodLogo from '../assets/JomFood.png';
+// import jomfoodLogo from '../assets/JomFood.png';
 import { toast } from '../utils/toast';
 import CommonLayout from '../components/layout/CommonLayout';
 import GoogleSignIn from '../components/auth/GoogleSignIn';
