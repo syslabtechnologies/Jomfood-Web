@@ -9,7 +9,7 @@ export const DIETARY_OPTIONS = [
   { id: 'halal', label: 'Halal', value: 'halal' },
   { id: 'muslim-owned', label: 'Muslim Owned', value: 'muslim-owned' },
   { id: 'healthy-eats', label: 'Healthy Eats', value: 'healthy-eats' }
-];
+]; 
 
 export const DISH_OPTIONS = [
   { id: 'kueh-kueh', label: 'Kueh Kueh', value: 'kueh-kueh' },
