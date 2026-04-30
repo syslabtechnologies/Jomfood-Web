@@ -1,0 +1,114 @@
+name: Auto Deployment (Daily)
+
+on:
+  schedule:
+    - cron: "30 3 * * *" # 8:30 AM PKT daily
+  workflow_dispatch:
+
+jobs:
+  auto-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+
+    steps:
+      - name: 🗳️ Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: dev
+
+      - name: 🧰 Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: 📊 Check if dev differs from staging
+        id: check_diff
+        run: |
+          git fetch origin dev staging
+          if git diff --quiet origin/staging...origin/dev; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 🔄 Create PR from dev to staging via GitHub API
+        if: steps.check_diff.outputs.changed == 'true'
+        id: create_pr
+        run: |
+          TITLE="chore: Daily deployment from dev to staging"
+          BODY="🤖 Automated PR from dev to staging"
+          API_URL="https://api.github.com/repos/${{ github.repository }}/pulls"
+
+          RESPONSE=$(curl -s -X POST "$API_URL" \
+            -H "Authorization: Bearer ${{ secrets.PERSONAL_GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg title "$TITLE" \
+              --arg head "dev" \
+              --arg base "staging" \
+              --arg body "$BODY" \
+              '{title: $title, head: $head, base: $base, body: $body}')")
+
+          echo "$RESPONSE"
+
+          PR_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
+          SHA=$(echo "$RESPONSE" | jq -r '.head.sha')
+
+          if [[ "$PR_NUMBER" == "null" || "$SHA" == "null" ]]; then
+            echo "PR creation failed or already exists. Exiting."
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: 🔄 Update PR branch (optional)
+        if: steps.create_pr.outputs.pr_number != ''
+        run: |
+          curl -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.create_pr.outputs.pr_number }}/update-branch" \
+            -H "Authorization: Bearer ${{ secrets.PERSONAL_GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json"
+
+      - name: ⏳ Wait until PR becomes mergeable or timeout
+        id: wait_mergeable
+        if: steps.create_pr.outputs.pr_number != ''
+        run: |
+          echo "Waiting for PR #${{ steps.create_pr.outputs.pr_number }} to be mergeable..."
+          for i in {1..90}; do
+            STATUS=$(curl -s -H "Authorization: Bearer ${{ secrets.PERSONAL_GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.create_pr.outputs.pr_number }} \
+              | jq -r '.mergeable')
+            echo "Check $i: mergeable = $STATUS"
+
+            if [[ "$STATUS" == "true" || "$STATUS" == "false" ]]; then
+              echo "MERGEABLE_STATUS=$STATUS" >> "$GITHUB_ENV"
+              break
+            fi
+            sleep 30
+          done
+
+      - name: ✅ Merge PR
+        if: env.MERGEABLE_STATUS != ''
+        run: |
+          echo "Mergeable status is: $MERGEABLE_STATUS"
+
+          if [ "$MERGEABLE_STATUS" == "true" ]; then
+            echo "✅ All checks passed. Merging..."
+            sleep 1
+            RESPONSE=$(curl -s -X PUT "https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.create_pr.outputs.pr_number }}/merge" \
+              -H "Authorization: Bearer ${{ secrets.PERSONAL_GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              -d '{"merge_method": "merge"}')
+            echo "Merge Response: $RESPONSE"
+
+          elif [ "$MERGEABLE_STATUS" == "false" ]; then
+            echo "❌ Required checks failed. Merge aborted."
+
+          else
+            echo "❓ Mergeable status unknown or timeout. Merge skipped."
+          fi

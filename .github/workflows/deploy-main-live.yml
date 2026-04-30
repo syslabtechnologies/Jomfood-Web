@@ -1,0 +1,245 @@
+name: Frontend CI/CD - Main Live Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-main-live:
+    runs-on: ubuntu-latest
+    environment: MainLive
+
+    env:
+      # Main Live environment variables
+      VITE_APP_API_BASE_URL: https://jscapi.jomsmart.com/api
+      VITE_GOOGLE_CLIENT_ID: 942861883753-odfmgnftbmn2poodnslru5pl5a701j25.apps.googleusercontent.com
+      VITE_APPLE_CLIENT_ID: ${{ vars.VITE_APPLE_CLIENT_ID }}
+      VITE_APPLE_REDIRECT_URI: ${{ vars.VITE_APPLE_REDIRECT_URI }}
+
+    steps:
+      - name: 🧾 Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: ⬇️ Download previous dist artifact (ignore if missing)
+        id: download-artifact
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: previous-dist-main-live
+          path: previous_dist
+        if: always()
+
+      - name: 📋 Identify removed files from build
+        run: |
+          if [ -d "previous_dist" ] && [ "$(ls -A previous_dist 2>/dev/null)" ]; then
+            echo "✅ Previous build found, comparing files..."
+            find previous_dist -type f -printf "%P\n" 2>/dev/null | sort > previous_files.txt || touch previous_files.txt
+            find dist -type f -printf "%P\n" 2>/dev/null | sort > current_files.txt || touch current_files.txt
+            comm -23 previous_files.txt current_files.txt > deleted.txt 2>/dev/null || touch deleted.txt
+            echo "Found removed files:"
+            cat deleted.txt || echo "No removed files"
+          else
+            echo "ℹ️ No previous build found, skipping comparison"
+            echo "" > deleted.txt
+            mkdir -p previous_dist
+          fi
+
+      - name: 🛠️ Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: 📦 Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 🔄 Set Version Environment Variables
+        run: |
+          VERSION=$(echo "1.0 + (${{ github.run_number }} - 1) * 0.1" | bc)
+          if (( $(echo "$VERSION > 99.9" | bc -l) )); then
+            REMAINDER=$(echo "(${{ github.run_number }} - 1) % 990" | bc)
+            VERSION=$(echo "1.0 + $REMAINDER * 0.1" | bc)
+          fi
+          DEPLOY_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "VITE_APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VITE_APP_DEPLOY_DATE=$DEPLOY_DATE" >> $GITHUB_ENV
+
+      - name: 🏗️ Build for Main Live
+        env:
+          VITE_APP_VERSION: ${{ env.VITE_APP_VERSION }}
+          VITE_APP_DEPLOY_DATE: ${{ env.VITE_APP_DEPLOY_DATE }}
+          VITE_APP_API_BASE_URL: ${{ env.VITE_APP_API_BASE_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ env.VITE_GOOGLE_CLIENT_ID }}
+          VITE_APPLE_CLIENT_ID: ${{ env.VITE_APPLE_CLIENT_ID }}
+          VITE_APPLE_REDIRECT_URI: ${{ env.VITE_APPLE_REDIRECT_URI }}
+        run: |
+          echo "🔧 Building for Main Live with backend: ${{ env.VITE_APP_API_BASE_URL }}"
+          NODE_OPTIONS="--max-old-space-size=8192" npm run build
+
+      - name: 📦 Install lftp and rsync
+        run: sudo apt-get install -y lftp rsync
+
+      - name: 🔍 Validate required secrets
+        run: |
+          if [ -z "${{ secrets.LIVE_SERVER_HOST }}" ]; then
+            echo "❌ Error: LIVE_SERVER_HOST secret is not configured"
+            echo "Please add LIVE_SERVER_HOST secret in GitHub repository settings"
+            exit 1
+          fi
+          if [ -z "${{ secrets.LIVE_SERVER_USERNAME }}" ]; then
+            echo "❌ Error: LIVE_SERVER_USERNAME secret is not configured"
+            echo "Please add LIVE_SERVER_USERNAME secret in GitHub repository settings"
+            exit 1
+          fi
+          if [ -z "${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ Error: LIVE_SERVER_SSH_PRIVATE_KEY secret is not configured"
+            echo "Please add LIVE_SERVER_SSH_PRIVATE_KEY secret in GitHub repository settings"
+            exit 1
+          fi
+          echo "✅ All required secrets are configured"
+          echo "🌐 Server Host: ${{ secrets.LIVE_SERVER_HOST }}"
+          echo "👤 Username: ${{ secrets.LIVE_SERVER_USERNAME }}"
+          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          echo "🔌 SSH Port: $SSH_PORT"
+          echo "SSH_PORT=$SSH_PORT" >> $GITHUB_ENV
+
+      - name: 🔌 Test SSH Connection
+        run: |
+          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          echo "🔍 Testing SSH connection to ${{ secrets.LIVE_SERVER_HOST }}:$SSH_PORT..."
+          
+          TEMP_KEY="$(mktemp)"
+          echo "${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}" > "$TEMP_KEY"
+          chmod 600 "$TEMP_KEY"
+          
+          timeout 30 ssh -i "$TEMP_KEY" \
+            -p $SSH_PORT \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -o BatchMode=yes \
+            ${{ secrets.LIVE_SERVER_USERNAME }}@${{ secrets.LIVE_SERVER_HOST }} \
+            "echo 'SSH connection successful!'" || {
+              echo "❌ SSH connection failed!"
+              echo "Please check LIVE_SERVER_HOST, LIVE_SERVER_SSH_PORT and SSH key"
+              rm -f "$TEMP_KEY"
+              exit 1
+            }
+          
+          rm -f "$TEMP_KEY"
+          echo "✅ SSH connection test successful!"
+
+      - name: 🔑 Setup SSH key for LFTP
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          ssh-keyscan -p $SSH_PORT ${{ secrets.LIVE_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🏢 Setup Main Live directory permissions
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIVE_SERVER_HOST }}
+          username: ${{ secrets.LIVE_SERVER_USERNAME }}
+          key: ${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}
+          timeout: 360s
+          command_timeout: 300s
+          script: |
+            echo "Creating directories..."
+            mkdir -p /home/jomfood/public_html
+            mkdir -p /home/jomfood/public_html/__trash
+            
+            echo "Setting ownership..."
+            chown -R jomfood:jomfood /home/jomfood/public_html || true
+            
+            echo "Setting permissions..."
+            chmod -R 775 /home/jomfood/public_html || true
+            
+            echo "Setting ACL (if supported)..."
+            setfacl -R -m u:jomfood:rwx,u:root:rwx /home/jomfood/public_html 2>/dev/null || echo "ACL not supported or already set"
+            
+            echo "✅ Directory permissions setup complete"
+
+      - name: 🚀 Deploy to Main Live Server
+        run: |
+          # Fast sync for built assets only (dist/) while preserving remote .htaccess
+          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          rsync -az --delete --info=progress2 \
+            --exclude='.htaccess' \
+            --filter='P .htaccess' \
+            -e "ssh -i ~/.ssh/id_rsa -p $SSH_PORT -o StrictHostKeyChecking=no" \
+            dist/ ${{ secrets.LIVE_SERVER_USERNAME }}@${{ secrets.LIVE_SERVER_HOST }}:/home/jomfood/public_html/
+
+      - name: 📋 Verify deploy structure (index.html + assets/ at root)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIVE_SERVER_HOST }}
+          username: ${{ secrets.LIVE_SERVER_USERNAME }}
+          key: ${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}
+          script: |
+            echo "Contents of /home/jomfood/public_html/ (document root must be this path):"
+            ls -la /home/jomfood/public_html/ || true
+            echo ""
+            echo "First 5 files in assets/ (JS must be here for app to load):"
+            ls /home/jomfood/public_html/assets/ 2>/dev/null | head -5 || echo "No assets/ folder — fix deploy or document root"
+
+      - name: 🗃️ Move deleted files to '__trash' on Main Live Server
+        if: ${{ success() && hashFiles('deleted.txt') != '' }}
+        continue-on-error: true
+        run: |
+          BASE_REMOTE="/home/jomfood/public_html"
+          SSH_PORT="${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}"
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              TRASH_PATH="__trash/$file"
+              REMOTE_FILE="$file"
+              echo "🗑️ Moving deleted file: $REMOTE_FILE → $TRASH_PATH"
+              {
+                echo "set sftp:auto-confirm yes"
+                echo "set cmd:fail-exit true"
+                echo "cd \"$BASE_REMOTE\""
+                echo "mkdir -p \"$(dirname \"$TRASH_PATH\")\""
+                echo "mv \"$REMOTE_FILE\" \"$TRASH_PATH\" || echo \"⚠️ Could not move $REMOTE_FILE\""
+                echo "bye"
+              } | lftp -u ${{ secrets.LIVE_SERVER_USERNAME }}, -p $SSH_PORT sftp://${{ secrets.LIVE_SERVER_HOST }}
+            fi
+          done < deleted.txt
+
+      - name: 🔑 Re-setup Main Live directory permissions
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIVE_SERVER_HOST }}
+          username: ${{ secrets.LIVE_SERVER_USERNAME }}
+          key: ${{ secrets.LIVE_SERVER_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.LIVE_SERVER_SSH_PORT || 8288 }}
+          timeout: 360s
+          command_timeout: 300s
+          script: |
+            echo "Re-setting directory permissions..."
+            mkdir -p /home/jomfood/public_html
+            mkdir -p /home/jomfood/public_html/__trash
+            chown -R jomfood:jomfood /home/jomfood/public_html || true
+            chmod -R 775 /home/jomfood/public_html || true
+            setfacl -R -m u:jomfood:rwx,u:root:rwx /home/jomfood/public_html 2>/dev/null || echo "ACL not supported"
+            echo "✅ Directory permissions updated"
+
+      - name: 🧳 Save current dist folder as artifact
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: previous-dist-main-live
+          path: dist
+
+      - name: ✅ Deployment Summary
+        run: |
+          echo "🎉 Main Live Deployment completed successfully!"
+          echo "📦 Build version: ${{ env.VITE_APP_VERSION }}"
+          echo "📅 Deploy date: ${{ env.VITE_APP_DEPLOY_DATE }}"
+          echo "🌐 Deployed to: jomfood.my (Backend: https://jscapi.jomsmart.com/api)"
+          echo ""
+          echo "⚠️ If frontend shows MIME/script error: In cPanel set Document Root to exactly: /home/jomfood/public_html (no /dist). If using Nginx, add: try_files \$uri \$uri/ /index.html;"
