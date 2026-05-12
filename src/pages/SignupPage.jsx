@@ -304,7 +304,7 @@ const SignupPage = () => {
                       referralCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     }))
                   }
-                  placeholder="M3NP8Q2R"
+                  placeholder="ABC12X"
                   maxLength={12}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400 uppercase tracking-wide"
                 />
