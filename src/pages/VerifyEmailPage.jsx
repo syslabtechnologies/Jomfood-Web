@@ -47,6 +47,9 @@ const VerifyEmailPage = () => {
                         authStorage.setRefreshToken(response.data.tokens.refreshToken);
 
                         localStorage.removeItem('pendingUserId');
+                        try {
+                            sessionStorage.removeItem('jf_signup_referral');
+                        } catch (_) { /* ignore */ }
 
                         if (response.data?.requiresPasswordSetup) {
                             toast.success('Email verified! Please set your password.');
@@ -63,7 +66,7 @@ const VerifyEmailPage = () => {
                     }
                 } catch (err) {
                     setVerificationStatus('error');
-                    const message = err?.response?.data?.message || err?.message || 'Verification failed';
+                    const message = err?.data?.message || err?.message || 'Verification failed';
                     setErrorMessage(message);
                     toast.error(message);
                 } finally {
@@ -118,6 +121,9 @@ const VerifyEmailPage = () => {
                 authStorage.setRefreshToken(response.data.tokens.refreshToken);
 
                 localStorage.removeItem('pendingUserId');
+                try {
+                    sessionStorage.removeItem('jf_signup_referral');
+                } catch (_) { /* ignore */ }
 
                 if (response.data?.requiresPasswordSetup) {
                     toast.success('Email verified! Please set your password.');
@@ -134,7 +140,7 @@ const VerifyEmailPage = () => {
             }
         } catch (err) {
             setVerificationStatus('error');
-            const message = err?.response?.data?.message || err?.message || 'Verification failed';
+            const message = err?.data?.message || err?.message || 'Verification failed';
             setErrorMessage(message);
             toast.error(message);
 
@@ -167,7 +173,7 @@ const VerifyEmailPage = () => {
                 }
             }
         } catch (err) {
-            const message = err?.response?.data?.message || err?.message || 'Failed to resend code';
+            const message = err?.data?.message || err?.message || 'Failed to resend code';
             toast.error(message);
         } finally {
             setResending(false);
