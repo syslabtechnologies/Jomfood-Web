@@ -1,8 +1,38 @@
 // API Configuration and Utilities
 import http from './http';
 import i18n from '../i18n/config';
+import { authStorage } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL || 'http://localhost:5055/api';
+
+/** Multipart upload to S3 via backend. Works signed-in (Bearer) or anonymous (e.g. signup). */
+export async function uploadImageFile(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  const token = authStorage.getAccessToken();
+  const res = await fetch(`${API_BASE_URL}/upload`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+  if (!res.ok) {
+    const msg =
+      typeof data?.message === 'string'
+        ? data.message
+        : `Upload failed (${res.status})`;
+    throw new Error(msg);
+  }
+  if (!data?.url) {
+    throw new Error('Upload did not return a URL');
+  }
+  return data.url;
+}
 
 // Generic API request function
 const apiRequest = async (endpoint, options = {}) => {
@@ -388,28 +418,36 @@ export const dealCategoriesAPI = {
 
 // Google OAuth API endpoints
 export const googleOAuthAPI = {
-  // Google OAuth authentication
-  authenticate: (userInfo) => {
-    return api.post('/auth/customer/google', {
+  // Google OAuth authentication — optional referralCode for new accounts only
+  authenticate: (userInfo, referralCode) => {
+    const body = {
       idToken: userInfo.idToken,
       email: userInfo.email,
       name: userInfo.name,
       picture: userInfo.picture,
       given_name: userInfo.given_name,
-      family_name: userInfo.family_name
-    });
+      family_name: userInfo.family_name,
+    };
+    if (referralCode) {
+      body.referral_code = String(referralCode).trim().toUpperCase();
+    }
+    return api.post('/auth/customer/google', body);
   },
 };
 
 // Apple OAuth API endpoints
 export const appleOAuthAPI = {
-  authenticate: (userInfo) => {
-    return api.post('/auth/customer/apple', {
+  authenticate: (userInfo, referralCode) => {
+    const body = {
       identityToken: userInfo.identityToken,
       authorizationCode: userInfo.authorizationCode,
       email: userInfo.email,
       name: userInfo.name,
-    });
+    };
+    if (referralCode) {
+      body.referral_code = String(referralCode).trim().toUpperCase();
+    }
+    return api.post('/auth/customer/apple', body);
   },
 };
 
