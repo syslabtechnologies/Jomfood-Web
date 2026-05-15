@@ -43,16 +43,28 @@ const formatDateTime = (datetimeString) => {
 
 const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, rescheduling }) => {
   const { t } = useTranslation();
-  const dealName =
-    claim?.deal_name ??
-    (claim && claim.deal_details && claim.deal_details.deal_name) ??
-    (claim && claim.deal_id && typeof claim.deal_id === 'object' ? claim.deal_id.deal_name : undefined) ??
-    '';
-  const dealTotal =
+  const cartLineItems = claim?.is_consolidated_cart &&
+    Array.isArray(claim?.cart_line_items) &&
+    claim.cart_line_items.length > 1
+    ? claim.cart_line_items
+    : null;
+  const dealName = cartLineItems
+    ? ''
+    : claim?.is_consolidated_cart
+      ? (claim?.deal_name ?? '')
+      : (
+        claim?.deal_name ??
+        (claim && claim.deal_details && claim.deal_details.deal_name) ??
+        (claim && claim.deal_id && typeof claim.deal_id === 'object' ? claim.deal_id.deal_name : undefined) ??
+        ''
+      );
+  const dealTotal = Number(
+    claim?.deal_total_after_coupon ??
     claim?.deal_total ??
     (claim && claim.deal_details && claim.deal_details.deal_total) ??
     (claim && claim.deal_id && typeof claim.deal_id === 'object' ? claim.deal_id.deal_total : undefined) ??
-    0;
+    0
+  );
   const businessName = claim?.business_id?.company_name || claim?.group_id?.name || '';
   const status = claim?.status || '';
   const preferredServiceType = claim?.preferred_service_type?.split('_').join(' ') || '';
@@ -68,7 +80,19 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
   return (
     <div className="flex flex-col md:flex-row items-start p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition gap-4">
       <div className="flex-1 w-full">
-        <h3 className="font-semibold text-lg">{dealName}</h3>
+        <h3 className="font-semibold text-lg leading-snug">
+          {cartLineItems?.length > 1 ? (
+            cartLineItems.map((line, index) => (
+              <span key={`${line.deal_id || line.deal_name}-${index}`}>
+                {index > 0 ? <span className="font-semibold text-lg"> · </span> : null}
+                <span>{line.deal_name}</span>
+                <span className="text-sm font-medium text-gray-500"> ×{line.quantity}</span>
+              </span>
+            ))
+          ) : (
+            dealName
+          )}
+        </h3>
         <p className="text-gray-500 text-sm">{businessName || '-'}</p>
         <div className="mt-1 text-xs text-gray-500">
           <span>{t('myDeals.claimedLabel', 'Claimed:')} {formatDate(claim?.claimed_at)}</span>
