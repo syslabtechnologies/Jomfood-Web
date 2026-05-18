@@ -27,6 +27,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
   const [couponCode, setCouponCode] = useState('');
   const [couponPreview, setCouponPreview] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [dateTimeError, setDateTimeError] = useState(false);
   const dateFieldRef = useRef(null);
   const timeItemClickRef = useRef(false);
 
@@ -150,6 +151,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (preferredServiceType === 'delivery') {
       setPreferredDateTime(null);
+      setDateTimeError(false);
     }
   }, [preferredServiceType]);
 
@@ -220,7 +222,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
       //   return;
       // }
     } else if (!preferredDateTime) {
-      toast.error(t('cart.dateTimeRequired', 'Date and time are required'));
+      setDateTimeError(true);
       return;
     }
     const preferredDatetime = preferredServiceType === 'delivery'
@@ -432,8 +434,15 @@ const CartDrawer = ({ isOpen, onClose }) => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setIsDateTimeOpen((prev) => !prev)}
-                        className="w-full text-left px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        onClick={() => {
+                          setDateTimeError(false);
+                          setIsDateTimeOpen((prev) => !prev);
+                        }}
+                        className={`w-full text-left px-3 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${
+                          dateTimeError
+                            ? 'border-red-500 text-red-700 focus:ring-red-200'
+                            : 'border-gray-300 focus:ring-orange-500'
+                        }`}
                       >
                         {preferredDateTime
                           ? preferredDateTime.toLocaleString('sv-SE', {
@@ -460,6 +469,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                             selected={preferredDateTime}
                             onChange={(date) => {
                               setPreferredDateTime(date);
+                              setDateTimeError(false);
                               if (timeItemClickRef.current) {
                                 setIsDateTimeOpen(false);
                                 timeItemClickRef.current = false;
@@ -497,6 +507,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                               selected={preferredDateTime}
                               onChange={(date) => {
                                 setPreferredDateTime(date);
+                                setDateTimeError(false);
                                 if (timeItemClickRef.current) {
                                   setIsDateTimeOpen(false);
                                   timeItemClickRef.current = false;
@@ -524,6 +535,11 @@ const CartDrawer = ({ isOpen, onClose }) => {
                         >
                           {t('cart.confirmDateTime', 'Confirm Date & Time')}
                         </button>
+                      )}
+                      {dateTimeError && (
+                        <p className="mt-1 text-xs font-medium text-red-600">
+                          {t('cart.selectDateTimeInline', 'Please select a date and time.')}
+                        </p>
                       )}
                     </div>
                   )}
