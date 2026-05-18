@@ -91,6 +91,19 @@ const CartDrawer = ({ isOpen, onClose }) => {
     return Array.from(new Set(mapped.flat()));
   }, [items]);
 
+  useEffect(() => {
+    if (!items.length || availableServiceTypes.length === 0) {
+      if (preferredServiceType) {
+        setPreferredServiceType('');
+      }
+      return;
+    }
+
+    if (!availableServiceTypes.includes(preferredServiceType)) {
+      setPreferredServiceType(availableServiceTypes[0]);
+    }
+  }, [availableServiceTypes, items.length, preferredServiceType]);
+
   const serviceTypeMap = {
     'delivery': 'delivery',
     'dine-in': 'dine_in',
