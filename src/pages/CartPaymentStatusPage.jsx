@@ -10,6 +10,7 @@ const CartPaymentStatusPage = () => {
   const [searchParams] = useSearchParams();
   const paymentId = searchParams.get('payment_id');
   const [status, setStatus] = useState('pending');
+  const [claimId, setClaimId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,8 +19,10 @@ const CartPaymentStatusPage = () => {
       if (!paymentId) return;
       try {
         const response = await cartAPI.getCartPaymentStatus(paymentId);
-        const nextStatus = response?.data?.data?.status || 'pending';
+        const data = response?.data?.data || response?.data || {};
+        const nextStatus = data?.status || 'pending';
         setStatus(nextStatus);
+        setClaimId(data?.claim_id || data?.claim_result?.data?.claim_id || null);
         if (nextStatus === 'paid' || nextStatus === 'failed' || nextStatus === 'cancelled') {
           clearInterval(intervalId);
         }
@@ -37,6 +40,7 @@ const CartPaymentStatusPage = () => {
 
   const isSuccess = status === 'paid';
   const isFailed = status === 'failed' || status === 'cancelled';
+  const viewDealHref = claimId ? `/my-deals?openClaim=${claimId}` : '/my-deals';
 
   return (
     <CommonLayout>
@@ -51,7 +55,7 @@ const CartPaymentStatusPage = () => {
                 {t('cart.paymentProcessing', 'Payment processing')}
               </h2>
               <p className="text-gray-600">
-                {t('cart.paymentProcessingHint', 'We’re confirming your payment. Please wait...')}
+                {t('cart.paymentProcessingHint', "We're confirming your payment. Please wait...")}
               </p>
             </>
           )}
@@ -65,14 +69,14 @@ const CartPaymentStatusPage = () => {
                 {t('cart.paymentSuccess', 'Payment successful')}
               </h2>
               <p className="text-gray-600 mb-6">
-                {t('cart.paymentSuccessHint', 'Payment confirmed. Your deals are ready.')}
+                {t('cart.paymentSuccessSetPreferences', 'Payment confirmed. Open your deal to set service preferences.')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
-                  to="/my-deals"
+                  to={viewDealHref}
                   className="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary-600"
                 >
-                  {t('cart.viewMyDeals', 'View My Deals')}
+                  {t('cart.viewDeal', 'View Deal')}
                 </Link>
                 <Link
                   to="/"
@@ -96,16 +100,10 @@ const CartPaymentStatusPage = () => {
                 {t('cart.paymentFailedHint', 'Payment was not completed. Please try again.')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link
-                  to="/"
-                  className="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary-600"
-                >
+                <Link to="/" className="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary-600">
                   {t('cart.tryAgain', 'Try Again')}
                 </Link>
-                <Link
-                  to="/"
-                  className="px-5 py-2.5 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200"
-                >
+                <Link to="/" className="px-5 py-2.5 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200">
                   {t('cart.backToDeals', 'Back to Deals')}
                 </Link>
               </div>
@@ -121,7 +119,7 @@ const CartPaymentStatusPage = () => {
                 {t('cart.paymentProcessing', 'Payment processing')}
               </h2>
               <p className="text-gray-600">
-                {t('cart.paymentProcessingHint', 'We’re confirming your payment. Please wait...')}
+                {t('cart.paymentProcessingHint', "We're confirming your payment. Please wait...")}
               </p>
             </>
           )}

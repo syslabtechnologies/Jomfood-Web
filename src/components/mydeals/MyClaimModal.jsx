@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import DealPreferencesSelector, { SERVICE_TYPE_MAP } from '../deals/DealPreferencesSelector';
+import { cartAPI } from '../../utils/api';
+import { toast } from '../../utils/toast';
 
 const formatRM = (val) => `RM${Number(val || 0).toFixed(2)}`;
 const formatDate = (val, opts) => {
@@ -23,9 +26,36 @@ const formatDateTime = (val) => {
   });
 };
 
-const MyClaimModal = ({ claim, onClose, onOpenDeal }) => {
+const MyClaimModal = ({ claim, customerId, onClose, onOpenDeal, onPreferencesSaved }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [preferredServiceType, setPreferredServiceType] = useState('');
+  const [preferredDateTime, setPreferredDateTime] = useState(null);
+  const [dateTimeError, setDateTimeError] = useState(false);
+  const [savingPreferences, setSavingPreferences] = useState(false);
+
+  const availableServiceTypes = useMemo(() => {
+    if (Array.isArray(claim?.available_service_types) && claim.available_service_types.length) {
+      return claim.available_service_types;
+    }
+    return [];
+  }, [claim]);
+
+  const preferencesPending = Boolean(claim?.preferences_pending);
+  const cartPurchaseId = claim?.cart_purchase_id;
+
+  React.useEffect(() => {
+    if (!claim) return;
+    if (claim.preferred_service_type) {
+      const reverseMap = { delivery: 'delivery', pickup: 'self_pickup', dine_in: 'dine-in' };
+      setPreferredServiceType(reverseMap[claim.preferred_service_type] || '');
+    } else if (availableServiceTypes[0]) {
+      setPreferredServiceType(availableServiceTypes[0]);
+    }
+    setPreferredDateTime(claim.preferred_datetime ? new Date(claim.preferred_datetime) : null);
+    setDateTimeError(false);
+  }, [claim, availableServiceTypes]);
+
   if (!claim) return null;
 
   const title =
@@ -67,6 +97,43 @@ const MyClaimModal = ({ claim, onClose, onOpenDeal }) => {
     }
   };
 
+  const handleSavePreferences = async () => {
+    if (!customerId || !cartPurchaseId) return;
+    if (!preferredServiceType) {
+      toast.error(t('cart.serviceTypeRequired', 'Service type is required'));
+      return;
+    }
+    if (preferredServiceType !== 'delivery' && !preferredDateTime) {
+      setDateTimeError(true);
+      return;
+    }
+    const backendType = SERVICE_TYPE_MAP[preferredServiceType];
+    const preferredDatetime = preferredServiceType === 'delivery'
+      ? null
+      : preferredDateTime?.toISOString();
+
+    try {
+      setSavingPreferences(true);
+      const res = await cartAPI.setCartPurchasePreferences(
+        cartPurchaseId,
+        customerId,
+        backendType,
+        preferredDatetime
+      );
+      if (res?.data?.success) {
+        toast.success(t('myDeals.preferencesSaved', 'Preferences saved successfully'));
+        onPreferencesSaved?.();
+        onClose?.();
+      } else {
+        toast.error(res?.data?.message || t('myDeals.preferencesSaveFailed', 'Failed to save preferences'));
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || t('myDeals.preferencesSaveFailed', 'Failed to save preferences'));
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
+
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -87,6 +154,36 @@ const MyClaimModal = ({ claim, onClose, onOpenDeal }) => {
               <div className="text-sm text-gray-500">{t('myDeals.qrNotAvailable', 'QR not available')}</div>
             )}
           </div>
+
+          {preferencesPending && (
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-3">
+              <p className="text-sm font-semibold text-orange-800">
+                {t('myDeals.setPreferencesTitle', 'Set your service preferences')}
+              </p>
+              <DealPreferencesSelector
+                availableServiceTypes={availableServiceTypes}
+                preferredServiceType={preferredServiceType}
+                onPreferredServiceTypeChange={setPreferredServiceType}
+                preferredDateTime={preferredDateTime}
+                onPreferredDateTimeChange={(date) => {
+                  setPreferredDateTime(date);
+                  setDateTimeError(false);
+                }}
+                dateTimeError={dateTimeError}
+              />
+              <button
+                type="button"
+                onClick={handleSavePreferences}
+                disabled={savingPreferences}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white py-3 rounded-lg text-sm font-semibold"
+              >
+                {savingPreferences
+                  ? t('common.saving', 'Saving...')
+                  : t('myDeals.savePreferences', 'Save preferences')}
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="text-xs text-gray-500">{t('myDeals.price', 'Price')}</div>
@@ -96,11 +193,21 @@ const MyClaimModal = ({ claim, onClose, onOpenDeal }) => {
               <div className="text-xs text-gray-500">{t('myDeals.claimedAt', 'Claimed At')}</div>
               <div className="text-sm font-medium">{formatDateTime(claim?.claimed_at)}</div>
             </div>
+            {!preferencesPending && claim?.preferred_service_type && (
+              <div className="bg-gray-50 rounded-lg p-4 sm:col-span-2">
+                <div className="text-xs text-gray-500">{t('myDeals.preferredServiceType', 'Service type')}</div>
+                <div className="text-sm font-medium">{claim.preferred_service_type.replace(/_/g, ' ')}</div>
+                {claim?.preferred_datetime && (
+                  <div className="text-sm text-gray-600 mt-1">
+                    {t('myDeals.scheduledAt', 'Scheduled')}: {formatDateTime(claim.preferred_datetime)}
+                  </div>
+                )}
+              </div>
+            )}
             {isActive && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-xs text-gray-500">{t('myDeals.expiresAt', 'Expires At')}</div>
                 <div className="text-sm font-medium">{formatDate(claim?.expires_at)}</div>
-                <div className="text-xs text-red-600 mt-1">{t('myDeals.useBeforeExpiry', 'Use before expiry')}</div>
               </div>
             )}
             {isRedeemed && (

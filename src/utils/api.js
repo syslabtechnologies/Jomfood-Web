@@ -248,6 +248,8 @@ export const dealsAPI = {
   // Get deal by ID (public, no auth required)
   getDealById: (id) => api.get(`/jomfood-deals/detail/${id}`),
 
+  getRedeemInstructions: () => api.get('/jomfood-deals/redeem-instructions'),
+
   // Claim deal (requires customer_id, optional preferred_service_type, preferred_datetime)
   claimDeal: (dealId, customerId, options = {}) => {
     const body = {
@@ -353,6 +355,13 @@ export const cartAPI = {
       preferred_service_type: preferredServiceType,
       preferred_datetime: preferredDatetime,
       coupon_code: couponCode
+    });
+  },
+  setCartPurchasePreferences: (purchaseId, customerId, preferredServiceType, preferredDatetime) => {
+    return http.post(`/jomfood-deals/cart/purchases/${purchaseId}/preferences`, {
+      customer_id: customerId,
+      preferred_service_type: preferredServiceType,
+      preferred_datetime: preferredDatetime,
     });
   },
   getCartPaymentStatus: (paymentId) => {
