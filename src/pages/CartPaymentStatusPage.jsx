@@ -11,6 +11,8 @@ const CartPaymentStatusPage = () => {
   const paymentId = searchParams.get('payment_id');
   const [status, setStatus] = useState('pending');
   const [claimId, setClaimId] = useState(null);
+  const [claimPending, setClaimPending] = useState(false);
+  const [claimError, setClaimError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,9 +23,20 @@ const CartPaymentStatusPage = () => {
         const response = await cartAPI.getCartPaymentStatus(paymentId);
         const data = response?.data?.data || response?.data || {};
         const nextStatus = data?.status || 'pending';
+        const nextClaimId = data?.claim_id || data?.claim_result?.data?.claim_id || null;
+        const pending = Boolean(data?.claim_pending);
+        const failedClaim = data?.claim_result?.success === false;
+
         setStatus(nextStatus);
-        setClaimId(data?.claim_id || data?.claim_result?.data?.claim_id || null);
-        if (nextStatus === 'paid' || nextStatus === 'failed' || nextStatus === 'cancelled') {
+        setClaimId(nextClaimId);
+        setClaimPending(pending);
+        setClaimError(failedClaim ? (data?.claim_result?.message || 'Deal could not be added to My Deals.') : '');
+
+        if (
+          (nextStatus === 'paid' && nextClaimId && !pending) ||
+          nextStatus === 'failed' ||
+          nextStatus === 'cancelled'
+        ) {
           clearInterval(intervalId);
         }
       } catch (error) {
@@ -38,8 +51,10 @@ const CartPaymentStatusPage = () => {
     return () => clearInterval(intervalId);
   }, [paymentId]);
 
-  const isSuccess = status === 'paid';
+  const isPaid = status === 'paid';
+  const isSuccess = isPaid && claimId && !claimPending;
   const isFailed = status === 'failed' || status === 'cancelled';
+  const isPaidButClaimPending = isPaid && (claimPending || !claimId);
   const viewDealHref = claimId ? `/my-deals?openClaim=${claimId}` : '/my-deals';
 
   return (
@@ -57,6 +72,23 @@ const CartPaymentStatusPage = () => {
               <p className="text-gray-600">
                 {t('cart.paymentProcessingHint', "We're confirming your payment. Please wait...")}
               </p>
+            </>
+          )}
+
+          {!loading && isPaidButClaimPending && (
+            <>
+              <div className="flex items-center justify-center mb-4">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                {t('cart.paymentProcessing', 'Payment processing')}
+              </h2>
+              <p className="text-gray-600 mb-2">
+                {t('cart.paymentPaidAddingDeal', 'Payment received. Adding your deal to My Deals...')}
+              </p>
+              {claimError && (
+                <p className="text-sm text-red-600 mb-4">{claimError}</p>
+              )}
             </>
           )}
 
