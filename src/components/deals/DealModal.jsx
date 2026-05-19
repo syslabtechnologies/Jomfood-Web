@@ -16,6 +16,7 @@ import PhoneRequiredModal from '../common/PhoneRequiredModal';
 import ConfirmModal from '../common/ConfirmModal';
 import ClaimDealModal from './ClaimDealModal';
 import RescheduleModal from './RescheduleModal';
+import DealRedeemInstructionsPanel from './DealRedeemInstructionsPanel';
 import noImage from '../../assets/default_product_deal_image.jpg';
 import { Link } from "react-router-dom"
 
@@ -53,6 +54,7 @@ const DealModal = ({ deal, onClose, onDealClaimed, onClaimActionLabel, claimData
   const [isFavorite, setIsFavorite] = useState(false);
   const [showSharePopover, setShowSharePopover] = useState(false);
   const shareLinkInputRef = useRef(null);
+  const [redeemInstructions, setRedeemInstructions] = useState(null);
 
   // Get claim info from claimData prop or fullDeal
   const currentClaim = claimData || fullDeal?.claim;
@@ -64,6 +66,18 @@ const DealModal = ({ deal, onClose, onDealClaimed, onClaimActionLabel, claimData
   // Responsive: get window width
   const windowWidth = useWindowWidth();
   const isXS = windowWidth < 380;
+
+  useEffect(() => {
+    dealsAPI.getRedeemInstructions()
+      .then((response) => {
+        if (response?.success && response?.data) {
+          setRedeemInstructions(response.data);
+        }
+      })
+      .catch(() => {
+        setRedeemInstructions(null);
+      });
+  }, []);
 
   useEffect(() => {
     // Try to fetch full deal details if we have the deal ID
@@ -656,6 +670,8 @@ const DealModal = ({ deal, onClose, onDealClaimed, onClaimActionLabel, claimData
   const socialIconSize = isXS ? "w-6 h-6" : "w-7 h-7";
   const titleFont = isXS ? "text-sm" : "text-base";
   const smallFont = isXS ? "text-[12px]" : "text-xs";
+  // Same fixed size for deal description + redeem instructions (Quill defaults are larger).
+  const dealBodyFont = "text-[12px] leading-[1.4] font-normal text-gray-600";
   const infoMb = isXS ? "mb-1.5" : "mb-3";
 
   return (
@@ -778,7 +794,7 @@ const DealModal = ({ deal, onClose, onDealClaimed, onClaimActionLabel, claimData
               {/* Description */}
               {fullDeal.deal_description && (
                 <div className={`${px} my-1`}>
-                  <p className={`${smallFont} text-gray-600`}>{fullDeal.deal_description}</p>
+                  <p className={dealBodyFont}>{fullDeal.deal_description}</p>
                 </div>
               )}
 
@@ -872,29 +888,16 @@ const DealModal = ({ deal, onClose, onDealClaimed, onClaimActionLabel, claimData
                 </div>
               </div>
 
-              {/* Consumption Type Section */}
+              {/* Service types + expandable how to redeem */}
               {fullDeal.consumptionType && fullDeal.consumptionType.length > 0 && (
-                <div className={`${px} ${pb2}`}>
-                  <div className={`flex items-center gap-2 flex-wrap mt-3 sm:mt-0`}>
-                    {fullDeal.consumptionType.includes('delivery') && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 ${productFont} font-medium`}>
-                        <Truck className={iconSize} />
-                        {t('dealCard.delivery', 'Delivery')}
-                      </span>
-                    )}
-                    {fullDeal.consumptionType.includes('dine-in') && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-600 border border-green-200 ${productFont} font-medium`}>
-                        <UtensilsCrossed className={iconSize} />
-                        {t('dealCard.dineIn', 'Dine-in')}
-                      </span>
-                    )}
-                    {fullDeal.consumptionType.includes('self_pickup') && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-600 border border-orange-200 ${productFont} font-medium`}>
-                        <ShoppingBag className={iconSize} />
-                        {t('dealCard.selfPickup', 'Pickup')}
-                      </span>
-                    )}
-                  </div>
+                <div className={`${px} pb-1 mt-3 sm:mt-0`}>
+                  <DealRedeemInstructionsPanel
+                    consumptionTypes={fullDeal.consumptionType}
+                    redeemInstructions={redeemInstructions}
+                    productFont={productFont}
+                    descriptionClassName={dealBodyFont}
+                    descriptionStyle={{ fontSize: '12px' }}
+                  />
                 </div>
               )}
 

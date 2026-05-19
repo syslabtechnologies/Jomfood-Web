@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X, Calendar } from 'lucide-react';
 import CommonLayout from '../components/layout/CommonLayout';
@@ -153,6 +154,7 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
 
 const MyDealsPage = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState('claimed');
 
@@ -220,6 +222,18 @@ const MyDealsPage = () => {
       loadFavorites(1);
     }
   }, [activeTab, loadClaims, loadFavorites]);
+
+  useEffect(() => {
+    const openClaimId = searchParams.get('openClaim');
+    if (!openClaimId || !claims.length) return;
+    const match = claims.find((c) => String(c._id) === String(openClaimId));
+    if (match) {
+      setSelectedClaim(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openClaim');
+      setSearchParams(next, { replace: true });
+    }
+  }, [claims, searchParams, setSearchParams]);
 
   // Extract date and time from preferred_datetime for RescheduleModal
   const getPreferredDateFromDatetime = (datetimeString) => {
@@ -397,8 +411,10 @@ const MyDealsPage = () => {
       </div>
       {selectedClaim && (
         <MyClaimModal 
-          claim={selectedClaim} 
-          onClose={() => setSelectedClaim(null)} 
+          claim={selectedClaim}
+          customerId={customerId}
+          onClose={() => setSelectedClaim(null)}
+          onPreferencesSaved={() => loadClaims(1)}
           onOpenDeal={(dealId) => {
             setSelectedClaim(null);
             setDealForModal({ _id: dealId });
