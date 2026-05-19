@@ -205,13 +205,13 @@ const MyClaimModal = ({ claim, customerId, onClose, onOpenDeal, onPreferencesSav
               </div>
             )}
             {isActive && (
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className={`bg-gray-50 rounded-lg p-4${isRedeemed ? '' : ' sm:col-span-2'}`}>
                 <div className="text-xs text-gray-500">{t('myDeals.expiresAt', 'Expires At')}</div>
                 <div className="text-sm font-medium">{formatDate(claim?.expires_at)}</div>
               </div>
             )}
             {isRedeemed && (
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className={`bg-gray-50 rounded-lg p-4${isActive ? '' : ' sm:col-span-2'}`}>
                 <div className="text-xs text-gray-500">{t('myDeals.redeemedAt', 'Redeemed At')}</div>
                 <div className="text-sm font-medium">{formatDateTime(claim?.redeemed_at)}</div>
               </div>

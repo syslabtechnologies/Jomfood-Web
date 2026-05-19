@@ -58,6 +58,37 @@ const DealPreferencesSelector = ({
     return () => window.removeEventListener('resize', updatePickerDirection);
   }, [isDateTimeOpen]);
 
+  useEffect(() => {
+    if (!isDateTimeOpen) return;
+
+    const handleOutsidePointer = (event) => {
+      if (!dateFieldRef.current) return;
+      if (event.target?.closest?.('.react-datepicker')) return;
+      if (!dateFieldRef.current.contains(event.target)) {
+        setIsDateTimeOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsidePointer);
+    document.addEventListener('touchstart', handleOutsidePointer);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsidePointer);
+      document.removeEventListener('touchstart', handleOutsidePointer);
+    };
+  }, [isDateTimeOpen]);
+
+  const handleDateTimeChange = (date) => {
+    onPreferredDateTimeChange?.(date, { clearError: true });
+    if (timeItemClickRef.current) {
+      setIsDateTimeOpen(false);
+      timeItemClickRef.current = false;
+    }
+  };
+
+  const markTimeItemClick = (event) => {
+    timeItemClickRef.current = !!event.target?.closest?.('.react-datepicker__time-list-item');
+  };
+
   const getTypeLabel = (type) => {
     if (type === 'delivery') return t('dealCard.delivery', 'Delivery');
     if (type === 'dine-in') return t('dealCard.dineIn', 'Dine-in');
@@ -164,17 +195,13 @@ const DealPreferencesSelector = ({
           </button>
           {isDateTimeOpen && !isSmallScreen && (
             <div
-              className={`absolute left-0 z-30 w-full ${pickerDirection === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+              className={`cart-datetime-overlay absolute left-0 z-30 w-full ${pickerDirection === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+              onMouseDownCapture={markTimeItemClick}
+              onTouchStartCapture={markTimeItemClick}
             >
               <DatePicker
                 selected={preferredDateTime}
-                onChange={(date) => {
-                  onPreferredDateTimeChange?.(date);
-                  if (timeItemClickRef.current) {
-                    setIsDateTimeOpen(false);
-                    timeItemClickRef.current = false;
-                  }
-                }}
+                onChange={handleDateTimeChange}
                 minDate={new Date()}
                 showTimeSelect
                 timeIntervals={15}
@@ -183,6 +210,33 @@ const DealPreferencesSelector = ({
                 shouldCloseOnSelect={false}
                 calendarClassName="cart-datetime-inline"
               />
+            </div>
+          )}
+          {isDateTimeOpen && isSmallScreen && (
+            <div
+              className="fixed inset-0 z-[70] bg-black/45 p-3 flex items-center justify-center"
+              onMouseDown={() => setIsDateTimeOpen(false)}
+              onTouchStart={() => setIsDateTimeOpen(false)}
+            >
+              <div
+                className="w-full max-w-[360px]"
+                onMouseDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
+                onMouseDownCapture={markTimeItemClick}
+                onTouchStartCapture={markTimeItemClick}
+              >
+                <DatePicker
+                  selected={preferredDateTime}
+                  onChange={handleDateTimeChange}
+                  minDate={new Date()}
+                  showTimeSelect
+                  timeIntervals={15}
+                  timeCaption={t('common.time', 'Time')}
+                  inline
+                  shouldCloseOnSelect={false}
+                  calendarClassName="cart-datetime-inline cart-datetime-inline-modal"
+                />
+              </div>
             </div>
           )}
           {dateTimeError && (

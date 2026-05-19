@@ -76,10 +76,22 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
   const cancelledAtDisplay = cancelledAt && cancelledAt !== '-' ? cancelledAt : '';
 
   const isActive = status === 'active';
-  const canCancelOrReschedule = isActive && !cancelledAtDisplay;
+
+  const handleCardKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onOpen?.();
+    }
+  };
 
   return (
-    <div className="flex flex-col md:flex-row items-start p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition gap-4">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={handleCardKeyDown}
+      className="flex flex-col md:flex-row items-start p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition gap-4 cursor-pointer"
+    >
       <div className="flex-1 w-full">
         <h3 className="font-semibold text-lg leading-snug">
           {cartLineItems?.length > 1 ? (
@@ -110,42 +122,10 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
         </div>
       </div>
       
-      {/* Right side: Price, Status, and all action buttons */}
-      <div className="flex flex-col items-end md:items-end gap-3 w-full md:w-auto flex-shrink-0">
-        {/* Price and Status */}
+      <div className="flex flex-col items-end md:items-end w-full md:w-auto flex-shrink-0">
         <div className="flex items-center gap-3 w-full md:w-auto justify-end">
           <span className="font-bold text-primary text-lg">{formatRM(dealTotal)}</span>
           <StatusBadge status={claim?.status || 'active'} />
-        </div>
-        
-        {/* All action buttons grouped together */}
-        <div className="flex flex-wrap gap-2 w-full md:w-auto justify-end">
-          <button
-            onClick={onOpen}
-            className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-600 text-xs font-medium transition-colors whitespace-nowrap"
-          >
-            {t('myDeals.viewQR', 'View QR')}
-          </button>
-          {/* {canCancelOrReschedule && (
-            <>
-              <button
-                onClick={() => onReschedule(claim)}
-                disabled={rescheduling}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                {rescheduling ? t('dealModal.rescheduling', 'Rescheduling...') : t('dealModal.reschedule', 'Reschedule')}
-              </button>
-              <button
-                onClick={() => onCancel(claim)}
-                disabled={cancelling}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <X className="w-3.5 h-3.5" />
-                {cancelling ? t('dealModal.cancelling', 'Cancelling...') : t('dealModal.cancelClaim', 'Cancel Claim')}
-              </button>
-            </>
-          )} */}
         </div>
       </div>
     </div>
