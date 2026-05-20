@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import CommonLayout from '../components/layout/CommonLayout';
 import { cartAPI } from '../utils/api';
 
+const AUTO_REDIRECT_MS = 3000;
+
 const CartPaymentStatusPage = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const paymentId = searchParams.get('payment_id');
   const [status, setStatus] = useState('pending');
   const [claimId, setClaimId] = useState(null);
+  const [cartPurchaseId, setCartPurchaseId] = useState(null);
+  const autoRedirectCancelledRef = useRef(false);
+  const redirectTimerRef = useRef(null);
   const [claimPending, setClaimPending] = useState(false);
   const [claimError, setClaimError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -29,6 +35,7 @@ const CartPaymentStatusPage = () => {
 
         setStatus(nextStatus);
         setClaimId(nextClaimId);
+        setCartPurchaseId(data?.cart_purchase_id || data?.claim_result?.data?.cart_purchase_id || null);
         setClaimPending(pending);
         setClaimError(failedClaim ? (data?.claim_result?.message || 'Deal could not be added to My Deals.') : '');
 
@@ -55,7 +62,39 @@ const CartPaymentStatusPage = () => {
   const isSuccess = isPaid && claimId && !claimPending;
   const isFailed = status === 'failed' || status === 'cancelled';
   const isPaidButClaimPending = isPaid && (claimPending || !claimId);
-  const viewDealHref = claimId ? `/my-deals?openClaim=${claimId}` : '/my-deals';
+  const openClaimId = claimId || cartPurchaseId;
+  const viewDealHref = openClaimId ? `/my-deals?openClaim=${openClaimId}` : '/my-deals';
+
+  const cancelAutoRedirect = useCallback(() => {
+    autoRedirectCancelledRef.current = true;
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+  }, []);
+
+  const goToViewDeal = useCallback(() => {
+    cancelAutoRedirect();
+    navigate(viewDealHref);
+  }, [cancelAutoRedirect, navigate, viewDealHref]);
+
+  useEffect(() => {
+    if (!isSuccess) return undefined;
+
+    autoRedirectCancelledRef.current = false;
+    redirectTimerRef.current = setTimeout(() => {
+      if (!autoRedirectCancelledRef.current) {
+        navigate(viewDealHref);
+      }
+    }, AUTO_REDIRECT_MS);
+
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
+  }, [isSuccess, navigate, viewDealHref]);
 
   return (
     <CommonLayout>
@@ -100,18 +139,38 @@ const CartPaymentStatusPage = () => {
               <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 {t('cart.paymentSuccess', 'Payment successful')}
               </h2>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 mb-4">
                 {t('cart.paymentSuccessSetPreferences', 'Payment confirmed. Open your deal to set service preferences.')}
               </p>
+              <p className="text-sm text-gray-500 mb-2">
+                {t('cart.redirectingToMyDeals', 'Opening your deal in My Deals...')}
+              </p>
+              <div className="w-full max-w-xs mx-auto h-1.5 bg-gray-200 rounded-full overflow-hidden mb-6">
+                <div
+                  className="h-full bg-primary rounded-full origin-left"
+                  style={{
+                    animation: `paymentRedirectProgress ${AUTO_REDIRECT_MS}ms linear forwards`,
+                    transform: 'scaleX(0)',
+                  }}
+                />
+              </div>
+              <style>{`
+                @keyframes paymentRedirectProgress {
+                  from { transform: scaleX(0); }
+                  to { transform: scaleX(1); }
+                }
+              `}</style>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link
-                  to={viewDealHref}
+                <button
+                  type="button"
+                  onClick={goToViewDeal}
                   className="px-5 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary-600"
                 >
                   {t('cart.viewDeal', 'View Deal')}
-                </Link>
+                </button>
                 <Link
                   to="/"
+                  onClick={cancelAutoRedirect}
                   className="px-5 py-2.5 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200"
                 >
                   {t('cart.backToDeals', 'Back to Deals')}
