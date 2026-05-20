@@ -143,7 +143,7 @@ const CartPaymentStatusPage = () => {
                 {t('cart.paymentSuccessSetPreferences', 'Payment confirmed. Open your deal to set service preferences.')}
               </p>
               <p className="text-sm text-gray-500 mb-2">
-                {t('cart.redirectingToMyDeals', 'Opening your deal in My Deals...')}
+                {t('cart.redirectingToMyDeals', 'Redirecting to your deal...')}
               </p>
               <div className="w-full max-w-xs mx-auto h-1.5 bg-gray-200 rounded-full overflow-hidden mb-6">
                 <div
