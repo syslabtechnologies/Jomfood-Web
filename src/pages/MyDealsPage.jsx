@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X, Calendar } from 'lucide-react';
 import CommonLayout from '../components/layout/CommonLayout';
@@ -43,16 +44,28 @@ const formatDateTime = (datetimeString) => {
 
 const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, rescheduling }) => {
   const { t } = useTranslation();
-  const dealName =
-    claim?.deal_name ??
-    (claim && claim.deal_details && claim.deal_details.deal_name) ??
-    (claim && claim.deal_id && typeof claim.deal_id === 'object' ? claim.deal_id.deal_name : undefined) ??
-    '';
-  const dealTotal =
+  const cartLineItems = claim?.is_consolidated_cart &&
+    Array.isArray(claim?.cart_line_items) &&
+    claim.cart_line_items.length > 1
+    ? claim.cart_line_items
+    : null;
+  const dealName = cartLineItems
+    ? ''
+    : claim?.is_consolidated_cart
+      ? (claim?.deal_name ?? '')
+      : (
+        claim?.deal_name ??
+        (claim && claim.deal_details && claim.deal_details.deal_name) ??
+        (claim && claim.deal_id && typeof claim.deal_id === 'object' ? claim.deal_id.deal_name : undefined) ??
+        ''
+      );
+  const dealTotal = Number(
+    claim?.deal_total_after_coupon ??
     claim?.deal_total ??
     (claim && claim.deal_details && claim.deal_details.deal_total) ??
     (claim && claim.deal_id && typeof claim.deal_id === 'object' ? claim.deal_id.deal_total : undefined) ??
-    0;
+    0
+  );
   const businessName = claim?.business_id?.company_name || claim?.group_id?.name || '';
   const status = claim?.status || '';
   const preferredServiceType = claim?.preferred_service_type?.split('_').join(' ') || '';
@@ -63,12 +76,36 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
   const cancelledAtDisplay = cancelledAt && cancelledAt !== '-' ? cancelledAt : '';
 
   const isActive = status === 'active';
-  const canCancelOrReschedule = isActive && !cancelledAtDisplay;
+
+  const handleCardKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onOpen?.();
+    }
+  };
 
   return (
-    <div className="flex flex-col md:flex-row items-start p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition gap-4">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={handleCardKeyDown}
+      className="flex flex-col md:flex-row items-start p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition gap-4 cursor-pointer"
+    >
       <div className="flex-1 w-full">
-        <h3 className="font-semibold text-lg">{dealName}</h3>
+        <h3 className="font-semibold text-lg leading-snug">
+          {cartLineItems?.length > 1 ? (
+            cartLineItems.map((line, index) => (
+              <span key={`${line.deal_id || line.deal_name}-${index}`}>
+                {index > 0 ? <span className="font-semibold text-lg"> · </span> : null}
+                <span>{line.deal_name}</span>
+                <span className="text-sm font-medium text-gray-500"> ×{line.quantity}</span>
+              </span>
+            ))
+          ) : (
+            dealName
+          )}
+        </h3>
         <p className="text-gray-500 text-sm">{businessName || '-'}</p>
         <div className="mt-1 text-xs text-gray-500">
           <span>{t('myDeals.claimedLabel', 'Claimed:')} {formatDate(claim?.claimed_at)}</span>
@@ -85,42 +122,10 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
         </div>
       </div>
       
-      {/* Right side: Price, Status, and all action buttons */}
-      <div className="flex flex-col items-end md:items-end gap-3 w-full md:w-auto flex-shrink-0">
-        {/* Price and Status */}
+      <div className="flex flex-col items-end md:items-end w-full md:w-auto flex-shrink-0">
         <div className="flex items-center gap-3 w-full md:w-auto justify-end">
           <span className="font-bold text-primary text-lg">{formatRM(dealTotal)}</span>
           <StatusBadge status={claim?.status || 'active'} />
-        </div>
-        
-        {/* All action buttons grouped together */}
-        <div className="flex flex-wrap gap-2 w-full md:w-auto justify-end">
-          <button
-            onClick={onOpen}
-            className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-600 text-xs font-medium transition-colors whitespace-nowrap"
-          >
-            {t('myDeals.viewQR', 'View QR')}
-          </button>
-          {/* {canCancelOrReschedule && (
-            <>
-              <button
-                onClick={() => onReschedule(claim)}
-                disabled={rescheduling}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                {rescheduling ? t('dealModal.rescheduling', 'Rescheduling...') : t('dealModal.reschedule', 'Reschedule')}
-              </button>
-              <button
-                onClick={() => onCancel(claim)}
-                disabled={cancelling}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <X className="w-3.5 h-3.5" />
-                {cancelling ? t('dealModal.cancelling', 'Cancelling...') : t('dealModal.cancelClaim', 'Cancel Claim')}
-              </button>
-            </>
-          )} */}
         </div>
       </div>
     </div>
@@ -129,6 +134,7 @@ const ClaimRow = ({ claim, onOpen, onCancel, onReschedule, cancelling, reschedul
 
 const MyDealsPage = () => {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState('claimed');
 
@@ -196,6 +202,18 @@ const MyDealsPage = () => {
       loadFavorites(1);
     }
   }, [activeTab, loadClaims, loadFavorites]);
+
+  useEffect(() => {
+    const openClaimId = searchParams.get('openClaim');
+    if (!openClaimId || !claims.length) return;
+    const match = claims.find((c) => String(c._id) === String(openClaimId));
+    if (match) {
+      setSelectedClaim(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openClaim');
+      setSearchParams(next, { replace: true });
+    }
+  }, [claims, searchParams, setSearchParams]);
 
   // Extract date and time from preferred_datetime for RescheduleModal
   const getPreferredDateFromDatetime = (datetimeString) => {
@@ -373,8 +391,10 @@ const MyDealsPage = () => {
       </div>
       {selectedClaim && (
         <MyClaimModal 
-          claim={selectedClaim} 
-          onClose={() => setSelectedClaim(null)} 
+          claim={selectedClaim}
+          customerId={customerId}
+          onClose={() => setSelectedClaim(null)}
+          onPreferencesSaved={() => loadClaims(1)}
           onOpenDeal={(dealId) => {
             setSelectedClaim(null);
             setDealForModal({ _id: dealId });

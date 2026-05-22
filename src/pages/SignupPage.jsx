@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Check } from 'lucide-react';
-import { api } from '../utils/api';
-import { googleOAuthAPI, appleOAuthAPI } from '../utils/api';
+import { api, googleOAuthAPI, appleOAuthAPI } from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { authStorage } from '../utils/auth';
 // import jomfoodLogo from '../assets/JomFood.png';
@@ -14,10 +12,13 @@ import AppleSignIn from '../components/auth/AppleSignIn';
 import { isAndroidDevice, isIOSDevice } from '../utils/appStoreLinks';
 import CountryPhoneInput from '../components/common/CountryPhoneInput';
 
-const initialForm = { name: '', email: '', phone: '' };
+const REFERRAL_SESSION_KEY = 'jf_signup_referral';
+
+const initialForm = { name: '', email: '', phone: '', referralCode: '' };
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { reload } = useUser();
   const { t } = useTranslation();
   const [form, setForm] = useState(initialForm);
@@ -25,6 +26,28 @@ const SignupPage = () => {
   const [agreeToPrivacy, setAgreeToPrivacy] = useState(false);
   const isIOS = isIOSDevice();
   const isAndroid = isAndroidDevice();
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('ref');
+    if (fromUrl && String(fromUrl).trim()) {
+      const normalized = String(fromUrl).trim().toUpperCase();
+      try {
+        sessionStorage.setItem(REFERRAL_SESSION_KEY, normalized);
+      } catch (_) {
+        /* ignore */
+      }
+      setForm((prev) => ({ ...prev, referralCode: prev.referralCode || normalized }));
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem(REFERRAL_SESSION_KEY);
+      if (stored) {
+        setForm((prev) => ({ ...prev, referralCode: prev.referralCode || stored }));
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }, [searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,6 +74,10 @@ const SignupPage = () => {
           ? (form.phone.trim().startsWith('+') ? form.phone.trim() : `+${form.phone.trim()}`)
           : undefined,
       };
+      const ref = (form.referralCode || '').trim().toUpperCase();
+      if (ref) {
+        payload.referral_code = ref;
+      }
 
       const res = await api.post('/auth/customer/register', payload);
 
@@ -81,10 +108,24 @@ const SignupPage = () => {
   const handleGoogleSuccess = async (userInfo) => {
     try {
       setSubmitting(true);
-      // Call Google OAuth API
-      const response = await googleOAuthAPI.authenticate(userInfo);
+      const referral =
+        (form.referralCode || '').trim().toUpperCase() ||
+        (() => {
+          try {
+            return (sessionStorage.getItem(REFERRAL_SESSION_KEY) || '').trim().toUpperCase();
+          } catch {
+            return '';
+          }
+        })() ||
+        undefined;
+      const response = await googleOAuthAPI.authenticate(userInfo, referral);
 
       if (response.success) {
+        try {
+          sessionStorage.removeItem(REFERRAL_SESSION_KEY);
+        } catch (_) {
+          /* ignore */
+        }
         // Store tokens using authStorage (same as email/password login)
         authStorage.setAccessToken(response.data.tokens.access_token);
         authStorage.setRefreshToken(response.data.tokens.refresh_token);
@@ -113,6 +154,10 @@ const SignupPage = () => {
         case 'GOOGLE_ACCOUNT_CONFLICT':
           toast.error(t('auth.googleAccountConflict'));
           break;
+        case 'INVALID_REFERRAL_CODE':
+        case 'SELF_REFERRAL':
+          toast.error(message);
+          break;
         case 'SERVER_ERROR':
           toast.error(t('auth.serverError'));
           break;
@@ -132,9 +177,24 @@ const SignupPage = () => {
   const handleAppleSuccess = async (userInfo) => {
     try {
       setSubmitting(true);
-      const response = await appleOAuthAPI.authenticate(userInfo);
+      const referral =
+        (form.referralCode || '').trim().toUpperCase() ||
+        (() => {
+          try {
+            return (sessionStorage.getItem(REFERRAL_SESSION_KEY) || '').trim().toUpperCase();
+          } catch {
+            return '';
+          }
+        })() ||
+        undefined;
+      const response = await appleOAuthAPI.authenticate(userInfo, referral);
 
       if (response.success) {
+        try {
+          sessionStorage.removeItem(REFERRAL_SESSION_KEY);
+        } catch (_) {
+          /* ignore */
+        }
         authStorage.setAccessToken(response.data.tokens.access_token);
         authStorage.setRefreshToken(response.data.tokens.refresh_token);
         await reload();
@@ -154,6 +214,10 @@ const SignupPage = () => {
           break;
         case 'APPLE_ACCOUNT_CONFLICT':
           toast.error(t('auth.appleAccountConflict'));
+          break;
+        case 'INVALID_REFERRAL_CODE':
+        case 'SELF_REFERRAL':
+          toast.error(message);
           break;
         case 'SERVER_ERROR':
           toast.error(t('auth.serverError'));
@@ -222,6 +286,31 @@ const SignupPage = () => {
                   onChange={(value) => setForm((prev) => ({ ...prev, phone: value }))}
                   placeholder={t('auth.phonePlaceholder')}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  Referral code <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="referralCode"
+                  name="referralCode"
+                  type="text"
+                  autoComplete="off"
+                  value={form.referralCode}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      referralCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                    }))
+                  }
+                  placeholder="ABC12X"
+                  maxLength={12}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400 uppercase tracking-wide"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter a referral code or open the link you were sent.
+                </p>
               </div>
 
               {/* Privacy Policy Agreement */}

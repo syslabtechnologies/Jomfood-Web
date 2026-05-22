@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import DatePicker from 'react-datepicker';
-import { X, ShoppingCart, Trash2, Truck, UtensilsCrossed, ShoppingBag, Calendar, MapPin } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { X, ShoppingCart, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useCart } from '../../context/CartContext';
 import { useUser } from '../../context/UserContext';
@@ -8,27 +7,20 @@ import { cartAPI } from '../../utils/api';
 import { toast } from '../../utils/toast';
 import LoginRequiredModal from '../auth/LoginRequiredModal';
 import PhoneRequiredModal from '../common/PhoneRequiredModal';
+import DealPreferencesSelector from '../deals/DealPreferencesSelector';
 
 const CartDrawer = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const { items, removeItem, updateItemQuantity, clearCart, totals, businessName, reload } = useCart();
   const { user, updateProfile } = useUser();
-  const [preferredServiceType, setPreferredServiceType] = useState('');
-  const [preferredDateTime, setPreferredDateTime] = useState(null);
-  const [isDateTimeOpen, setIsDateTimeOpen] = useState(false);
-  const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [pickerDirection, setPickerDirection] = useState('bottom');
-  const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [couponPreview, setCouponPreview] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
-  const dateFieldRef = useRef(null);
-  const timeItemClickRef = useRef(false);
 
   useEffect(() => {
     if (isOpen && reload) {
@@ -91,96 +83,12 @@ const CartDrawer = ({ isOpen, onClose }) => {
     return Array.from(new Set(mapped.flat()));
   }, [items]);
 
-  const serviceTypeMap = {
-    'delivery': 'delivery',
-    'dine-in': 'dine_in',
-    'self_pickup': 'pickup',
-  };
-
   const formatPrice = (value) => `RM ${Number(value || 0).toFixed(2)}`;
 
   const handleQuantityChange = async (item, nextQty) => {
     const quantity = Math.max(1, Number(nextQty || 1));
     await updateItemQuantity(item.id, quantity);
   };
-
-  const getDateRange = () => {
-    if (!items.length) return { min: null, max: null };
-    const starts = items
-      .map((item) => item?.start_date || item?.deal_start_date)
-      .filter(Boolean)
-      .map((date) => new Date(date));
-    const ends = items
-      .map((item) => item?.end_date || item?.deal_end_date)
-      .filter(Boolean)
-      .map((date) => new Date(date));
-    if (!starts.length || !ends.length) return { min: null, max: null };
-    const minDate = new Date(Math.max(...starts.map((d) => d.getTime())));
-    const maxDate = new Date(Math.min(...ends.map((d) => d.getTime())));
-    return { min: minDate, max: maxDate };
-  };
-
-  const dateRange = useMemo(getDateRange, [items]);
-  const today = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now;
-  }, []);
-  const effectiveMinDate = useMemo(() => today, [today]);
-
-  useEffect(() => {
-    if (user) {
-      setAddress(user.address || '');
-    }
-  }, [user, isOpen]);
-
-  useEffect(() => {
-    if (preferredServiceType === 'delivery') {
-      setPreferredDateTime(null);
-    }
-  }, [preferredServiceType]);
-
-  useEffect(() => {
-    const handleResize = () => setIsSmallScreen(window.innerWidth <= 417);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!isDateTimeOpen) return;
-
-    const updatePickerDirection = () => {
-      if (!dateFieldRef.current) return;
-      const rect = dateFieldRef.current.getBoundingClientRect();
-      const estimatedPickerHeight = 300;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      setPickerDirection(spaceBelow < estimatedPickerHeight ? 'top' : 'bottom');
-    };
-
-    updatePickerDirection();
-    window.addEventListener('resize', updatePickerDirection);
-    return () => window.removeEventListener('resize', updatePickerDirection);
-  }, [isDateTimeOpen]);
-
-  useEffect(() => {
-    if (!isDateTimeOpen) return;
-
-    const handleOutsidePointer = (event) => {
-      if (!dateFieldRef.current) return;
-      if (event.target?.closest?.('.react-datepicker')) return;
-      if (!dateFieldRef.current.contains(event.target)) {
-        setIsDateTimeOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleOutsidePointer);
-    document.addEventListener('touchstart', handleOutsidePointer);
-    return () => {
-      document.removeEventListener('mousedown', handleOutsidePointer);
-      document.removeEventListener('touchstart', handleOutsidePointer);
-    };
-  }, [isDateTimeOpen]);
 
   const handlePhoneSubmit = async (phone) => {
     if (!user?._id) return;
@@ -197,35 +105,12 @@ const CartDrawer = ({ isOpen, onClose }) => {
       setShowPhoneModal(true);
       return;
     }
-    if (availableServiceTypes.length > 0 && !preferredServiceType) {
-      toast.error(t('cart.serviceTypeRequired', 'Service type is required'));
-      return;
-    }
-    if (preferredServiceType === 'delivery') {
-      // if (!address || !address.trim()) {
-      //   toast.error(t('cart.addressRequired', 'Delivery address is required'));
-      //   return;
-      // }
-    } else if (!preferredDateTime) {
-      toast.error(t('cart.dateTimeRequired', 'Date and time are required'));
-      return;
-    }
-    const preferredDatetime = preferredServiceType === 'delivery'
-      ? null
-      : preferredDateTime?.toISOString();
-
     try {
       setSubmitting(true);
-      if (preferredServiceType === 'delivery') {
-        const trimmedAddress = address ? address.trim() : '';
-        if (trimmedAddress && trimmedAddress !== (user.address || '')) {
-          await updateProfile({ address: trimmedAddress });
-        }
-      }
       const response = await cartAPI.checkoutCart(
         user._id,
-        preferredServiceType ? serviceTypeMap[preferredServiceType] : null,
-        preferredDatetime,
+        null,
+        null,
         couponPreview?.applied_coupon?.source === 'manual'
           ? couponPreview?.applied_coupon?.coupon_code
           : null
@@ -338,7 +223,20 @@ const CartDrawer = ({ isOpen, onClose }) => {
                 ))}
               </div>
 
-              <div className="mt-6 border-t border-gray-200 pt-4 space-y-4">
+              {availableServiceTypes.length > 0 && (
+                <div className="mt-3">
+                  <DealPreferencesSelector
+                    readOnly
+                    availableServiceTypes={availableServiceTypes}
+                  />
+                </div>
+              )}
+
+              <div
+                className={`border-t border-gray-200 space-y-4 ${
+                  availableServiceTypes.length > 0 ? 'mt-3 pt-3' : 'mt-6 pt-4'
+                }`}
+              >
                 <div className="space-y-3">
                   {couponPreview?.applied_coupon?.source === 'first_time' && (
                     <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
@@ -375,161 +273,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
                     </div>
                   )}
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-gray-800 mb-2">
-                    {t('cart.preferences', 'Preferences')}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {availableServiceTypes.map((type) => {
-                      const isSelected = preferredServiceType === type;
-                      const Icon = type === 'delivery' ? Truck : type === 'dine-in' ? UtensilsCrossed : ShoppingBag;
-                      const label = type === 'delivery'
-                        ? t('dealCard.delivery', 'Delivery')
-                        : type === 'dine-in'
-                          ? t('dealCard.dineIn', 'Dine-in')
-                          : t('dealCard.selfPickup', 'Pickup');
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setPreferredServiceType(type)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium ${isSelected
-                              ? 'border-orange-500 bg-orange-50 text-orange-600'
-                              : 'border-gray-200 text-gray-700 hover:border-gray-300'
-                            }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 gap-3">
-                  {preferredServiceType === 'delivery' ? (
-                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
-                      {t('cart.deliverySchedulingNote', 'Contact the restaurant for delivery charges and details.')}
-                    </div>
-                  ) : (
-                    <div ref={dateFieldRef} className="relative text-sm font-medium text-gray-700">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="w-4 h-4" />
-                        {t('dealModal.preferredDateTime', 'Preferred Date & Time')}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsDateTimeOpen((prev) => !prev)}
-                        className="w-full text-left px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      >
-                        {preferredDateTime
-                          ? preferredDateTime.toLocaleString('sv-SE', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false,
-                          }).replace(',', '')
-                          : t('dealModal.preferredDateTime', 'Preferred Date & Time')}
-                      </button>
-                      {isDateTimeOpen && !isSmallScreen && (
-                        <div
-                          className={`cart-datetime-overlay absolute left-0 z-30 w-full ${pickerDirection === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
-                          onMouseDownCapture={(event) => {
-                            timeItemClickRef.current = !!event.target?.closest?.('.react-datepicker__time-list-item');
-                          }}
-                          onTouchStartCapture={(event) => {
-                            timeItemClickRef.current = !!event.target?.closest?.('.react-datepicker__time-list-item');
-                          }}
-                        >
-                          <DatePicker
-                            selected={preferredDateTime}
-                            onChange={(date) => {
-                              setPreferredDateTime(date);
-                              if (timeItemClickRef.current) {
-                                setIsDateTimeOpen(false);
-                                timeItemClickRef.current = false;
-                              }
-                            }}
-                            minDate={effectiveMinDate || undefined}
-                            maxDate={undefined}
-                            showTimeSelect
-                            timeIntervals={15}
-                            timeCaption={t('common.time', 'Time')}
-                            inline
-                            shouldCloseOnSelect={false}
-                            calendarClassName="cart-datetime-inline"
-                          />
-                        </div>
-                      )}
-                      {isDateTimeOpen && isSmallScreen && (
-                        <div
-                          className="fixed inset-0 z-[70] bg-black/45 p-3 flex items-center justify-center"
-                          onMouseDown={() => setIsDateTimeOpen(false)}
-                          onTouchStart={() => setIsDateTimeOpen(false)}
-                        >
-                          <div
-                            className="w-full max-w-[360px]"
-                            onMouseDown={(event) => event.stopPropagation()}
-                            onTouchStart={(event) => event.stopPropagation()}
-                            onMouseDownCapture={(event) => {
-                              timeItemClickRef.current = !!event.target?.closest?.('.react-datepicker__time-list-item');
-                            }}
-                            onTouchStartCapture={(event) => {
-                              timeItemClickRef.current = !!event.target?.closest?.('.react-datepicker__time-list-item');
-                            }}
-                          >
-                            <DatePicker
-                              selected={preferredDateTime}
-                              onChange={(date) => {
-                                setPreferredDateTime(date);
-                                if (timeItemClickRef.current) {
-                                  setIsDateTimeOpen(false);
-                                  timeItemClickRef.current = false;
-                                }
-                              }}
-                              minDate={effectiveMinDate || undefined}
-                              maxDate={undefined}
-                              showTimeSelect
-                              timeIntervals={15}
-                              timeCaption={t('common.time', 'Time')}
-                              inline
-                              shouldCloseOnSelect={false}
-                              calendarClassName="cart-datetime-inline cart-datetime-inline-modal"
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {preferredDateTime && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsDateTimeOpen(false);
-                          }}
-                          className="hidden mt-2 w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          {t('cart.confirmDateTime', 'Confirm Date & Time')}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {/* {preferredServiceType === 'delivery' && (
-                    <label className="text-sm font-medium text-gray-700">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="w-4 h-4" />
-                        {t('cart.addressLabel', 'Delivery Address')}
-                      </div>
-                      <textarea
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder={t('cart.addressPlaceholder', 'Enter your delivery address')}
-                      />
-                    </label>
-                  )} */}
-                </div>
               </div>
             </>
           )}

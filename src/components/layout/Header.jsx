@@ -83,19 +83,19 @@ const Header = ({ isRestaurantPage = false }) => {
           <LanguageSwitcher />
           <PWAInstallButton />
           <Link
-            to="/"
-            // to="/deals"
-            className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-primary transition-colors text-xs sm:text-sm font-medium"
-          >
-            <span className="sm:inline">{t('header.deals')}</span>
-          </Link>
-          <Link
             to="/restaurants"
-            // to="/"
             className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-primary transition-colors text-xs sm:text-sm font-medium"
           >
             <span className="sm:inline">{t('header.restaurants')}</span>
           </Link>
+          {user && (
+            <Link
+              to="/my-deals"
+              className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-primary transition-colors text-xs sm:text-sm font-medium"
+            >
+              <span className="sm:inline">{t('common.myDeals', 'My Deals')}</span>
+            </Link>
+          )}
           <button
             type="button"
             className="relative p-2 rounded-md text-gray-700 hover:text-primary hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -165,13 +165,6 @@ const Header = ({ isRestaurantPage = false }) => {
                 {menuOpen && (
                   <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-md py-1 z-50">
                     <Link
-                      to="/my-deals"
-                      className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      {t('common.myDeals', 'My Deals')}
-                    </Link>
-                    <Link
                       to="/profile"
                       className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setMenuOpen(false)}
@@ -225,19 +218,21 @@ const Header = ({ isRestaurantPage = false }) => {
                     <LanguageSwitcher />
                   </div>
                   <Link
-                    to="/"
-                    className="flex items-center px-3 py-3 text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg text-base font-medium transition-colors"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    {t('header.deals').toUpperCase()}
-                  </Link>
-                  <Link
                     to="/restaurants"
                     className="flex items-center px-3 py-3 text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg text-base font-medium transition-colors"
                     onClick={() => setMobileOpen(false)}
                   >
-                    {t('header.restaurants').toUpperCase()}
+                    {t('header.restaurants')}
                   </Link>
+                  {user && (
+                    <Link
+                      to="/my-deals"
+                      className="flex items-center px-3 py-3 text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg text-base font-medium transition-colors"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {t('common.myDeals', 'My Deals')}
+                    </Link>
+                  )}
                 </div>
                 
                 {!user ? (
@@ -286,13 +281,6 @@ const Header = ({ isRestaurantPage = false }) => {
                       onClick={() => setMobileOpen(false)}
                     >
                       {t('common.profile')}
-                    </Link>
-                    <Link
-                      to="/my-deals"
-                      className="flex items-center px-3 py-3 text-gray-700 hover:text-primary hover:bg-gray-50 rounded-lg text-base font-medium transition-colors"
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      {t('common.myDeals', 'My Deals')}
                     </Link>
                     <button
                       type="button"
