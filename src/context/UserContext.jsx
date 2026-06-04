@@ -80,7 +80,7 @@ export const UserProvider = ({ children }) => {
 
   const deleteAccount = useCallback(async () => {
     try {
-      await http.delete('/auth/customer/delete');
+      const { data } = await http.delete('/auth/customer/request-deletion');
       try {
         await removeCustomerIdFromFCMToken();
       } catch (error) {
@@ -88,7 +88,7 @@ export const UserProvider = ({ children }) => {
       }
       authStorage.clearAll();
       setUser(null);
-      toast.success('Account deleted');
+      toast.success(data?.message || 'Your account will be deleted soon');
     } catch (error) {
       console.error('Delete account error:', error);
       throw error;
