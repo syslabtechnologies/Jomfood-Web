@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer } from 'react';
 
 // API Context for global state management
 const ApiContext = createContext();
-
+ 
 // Action types
 const API_ACTIONS = {
   SET_LOADING: 'SET_LOADING',
